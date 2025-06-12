@@ -72,7 +72,7 @@ def gerar_relatorio_pdf(resultados, fig):
         # Com a biblioteca fpdf2, esta chamada funciona corretamente.
         pdf.image(image_buffer, w=190)
 
-    return pdf.output()
+    return bytes(pdf.output())
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
 
