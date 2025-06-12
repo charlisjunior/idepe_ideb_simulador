@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
 import tempfile
+import io 
 
 # --- 1. CONFIGURAÇÃO CENTRALIZADA ---
 ETAPAS_CONFIG = {
@@ -68,7 +69,10 @@ def criar_grafico_simulacao(data):
     return fig
 
 def gerar_relatorio_pdf(resultados, fig):
-    """Gera o PDF usando um arquivo temporário de forma compatível com Windows e Linux."""
+    """
+    Gera o PDF usando um arquivo temporário de forma manual para garantir
+    compatibilidade total entre Windows (local) e Linux (Streamlit Cloud).
+    """
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -76,21 +80,31 @@ def gerar_relatorio_pdf(resultados, fig):
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Etapa: {resultados['etapa']}", ln=True, align="C")
     pdf.ln(10)
+
     for chave, valor in resultados['metricas'].items():
         pdf.cell(80, 10, str(chave), border=1)
         pdf.cell(0, 10, str(valor), border=1, ln=True)
     pdf.ln(10)
 
-    # CORREÇÃO PARA COMPATIBILIDADE COM WINDOWS:
-    # Passamos o objeto 'tmpfile' diretamente, em vez de 'tmpfile.name'
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".png") as tmpfile:
-        # 1. Salva a figura passando o objeto de arquivo
-        fig.savefig(tmpfile, format="png", dpi=150)
+    # --- Abordagem Manual de Arquivo Temporário ---
+    # Esta é a forma mais robusta para contornar os bugs do FPDF e do Windows.
+    tmp_file_name = None
+    try:
+        # 1. Cria um arquivo temporário, mas o fecha para liberar o lock do Windows
+        #    delete=False é crucial para que possamos usar o nome após fechar.
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp_file_name = tmp.name
         
-        # 2. Adiciona a imagem ao PDF passando o mesmo objeto de arquivo
-        #    O 'type' é necessário aqui para o fpdf não se confundir.
-        pdf.image(tmpfile, type='PNG', x=10, y=None, w=190)
+        # 2. Agora que o arquivo está fechado, podemos usá-lo pelo NOME.
+        #    Isso funciona no Windows e agrada a biblioteca FPDF na nuvem.
+        fig.savefig(tmp_file_name, format="png", dpi=150)
+        pdf.image(tmp_file_name, x=10, y=None, w=190)
 
+    finally:
+        # 3. Garante que o arquivo temporário seja deletado no final, mesmo se ocorrer um erro.
+        if tmp_file_name and os.path.exists(tmp_file_name):
+            os.remove(tmp_file_name)
+    
     return bytes(pdf.output())
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
