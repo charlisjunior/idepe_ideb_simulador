@@ -1,14 +1,15 @@
 # ==============================================================================
-#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL COM REATIVIDADE CORRIGIDA
+#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL, COMPLETA E CORRIGIDA (12/06/2025)
 # ==============================================================================
 
+# --- 0. IMPORTAÇÕES NECESSÁRIAS ---
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
 import tempfile
-import io 
+import os
 
 # --- 1. CONFIGURAÇÃO CENTRALIZADA ---
 ETAPAS_CONFIG = {
@@ -29,21 +30,10 @@ ETAPAS_CONFIG = {
 # --- 2. FUNÇÕES DE LÓGICA E UTILIDADES ---
 
 def limpar_campos():
-    """Callback que define os valores dos widgets para o padrão,
-    eficaz contra o preenchimento automático do navegador."""
-    # Define os valores padrão para cada chave no session_state
-    # Selectboxes voltarão ao índice 0 se a chave for deletada.
-    if "indicador" in st.session_state: del st.session_state["indicador"]
-    if "etapa" in st.session_state: del st.session_state["etapa"]
-
-    for i in range(10): # Limpa um número suficiente de chaves de aprovação
-        if f"ap_{i}" in st.session_state:
-            st.session_state[f"ap_{i}"] = None
-
-    if "prof_lp" in st.session_state: st.session_state.prof_lp = None
-    if "prof_mt" in st.session_state: st.session_state.prof_mt = None
-    if "lp_change" in st.session_state: st.session_state.lp_change = 0
-    if "mt_change" in st.session_state: st.session_state.mt_change = 0
+    """Callback para o botão 'Limpar'. Deleta chaves do session_state."""
+    keys_to_delete = [k for k in st.session_state.keys()]
+    for key in keys_to_delete:
+        del st.session_state[key]
 
 
 def calcular_fluxo(aprovacoes):
@@ -69,10 +59,8 @@ def criar_grafico_simulacao(data):
     return fig
 
 def gerar_relatorio_pdf(resultados, fig):
-    """
-    Gera o PDF usando um arquivo temporário de forma manual para garantir
-    compatibilidade total entre Windows (local) e Linux (Streamlit Cloud).
-    """
+    """Gera o PDF usando um arquivo temporário de forma manual para garantir
+    compatibilidade total entre Windows (local) e Linux (Streamlit Cloud)."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -80,28 +68,20 @@ def gerar_relatorio_pdf(resultados, fig):
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Etapa: {resultados['etapa']}", ln=True, align="C")
     pdf.ln(10)
-
     for chave, valor in resultados['metricas'].items():
         pdf.cell(80, 10, str(chave), border=1)
         pdf.cell(0, 10, str(valor), border=1, ln=True)
     pdf.ln(10)
 
-    # --- Abordagem Manual de Arquivo Temporário ---
-    # Esta é a forma mais robusta para contornar os bugs do FPDF e do Windows.
     tmp_file_name = None
     try:
-        # 1. Cria um arquivo temporário, mas o fecha para liberar o lock do Windows
-        #    delete=False é crucial para que possamos usar o nome após fechar.
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
             tmp_file_name = tmp.name
         
-        # 2. Agora que o arquivo está fechado, podemos usá-lo pelo NOME.
-        #    Isso funciona no Windows e agrada a biblioteca FPDF na nuvem.
         fig.savefig(tmp_file_name, format="png", dpi=150)
         pdf.image(tmp_file_name, x=10, y=None, w=190)
 
     finally:
-        # 3. Garante que o arquivo temporário seja deletado no final, mesmo se ocorrer um erro.
         if tmp_file_name and os.path.exists(tmp_file_name):
             os.remove(tmp_file_name)
     
@@ -110,20 +90,18 @@ def gerar_relatorio_pdf(resultados, fig):
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
 
 def main():
-    """Função principal que renderiza a página do Streamlit."""
     st.title("📊 Simulador do IDEB/IDEPE")
     st.markdown("Selecione a etapa, preencha os campos e clique em 'Calcular'.")
 
-    # Botão de limpar continua fora do formulário
-    st.button("🔄 Limpar todos os campos", on_click=limpar_campos)
-        
-    # WIDGETS DE CONTROLE FORA DO FORMULÁRIO PARA REATIVIDADE INSTANTÂNEA
+    if st.button("🔄 Limpar todos os campos", on_click=limpar_campos):
+        st.success("Campos reiniciados!")
+        st.rerun()
+
     indicador = st.selectbox("🔍 Qual indicador deseja simular?", ["IDEB", "IDEPE"], key="indicador")
     etapa = st.selectbox("📚 Etapa de Ensino", list(ETAPAS_CONFIG.keys()), key="etapa")
     
     st.markdown("---")
     
-    # Começa o formulário que agrupa os inputs para submissão em lote
     with st.form(key="simulation_form"):
         st.header("🔢 Entradas de Dados")
         st.subheader("Taxas de Aprovação (%)")
@@ -145,13 +123,10 @@ def main():
 
         submitted = st.form_submit_button("Calcular e Simular")
 
-    # A lógica de cálculo só roda se o formulário for enviado
     if submitted:
         if prof_lp_base is None or prof_mt_base is None:
             st.error("Por favor, preencha as proficiências de LP e MT.")
         else:
-            # Lógica de cálculo e exibição...
-            # (O código aqui dentro é o mesmo da versão anterior)
             prof_lp = prof_lp_base + lp_change
             prof_mt = prof_mt_base + mt_change
             rendimento = calcular_fluxo(aprovacoes)
@@ -192,5 +167,6 @@ def main():
     st.markdown("---")
     st.markdown("💡 *Este simulador é uma estimativa. Valores reais podem variar.*")
 
+# --- PONTO DE ENTRADA DO SCRIPT ---
 if __name__ == '__main__':
     main()
