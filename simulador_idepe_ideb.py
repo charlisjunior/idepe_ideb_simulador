@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
+import tempfile
 
 # --- 1. CONFIGURAÇÃO CENTRALIZADA ---
 ETAPAS_CONFIG = {
@@ -67,8 +68,7 @@ def criar_grafico_simulacao(data):
     return fig
 
 def gerar_relatorio_pdf(resultados, fig):
-    """Gera um relatório PDF completo, usando um arquivo temporário para o gráfico
-    para garantir compatibilidade com o ambiente da nuvem."""
+    """Gera o PDF usando um arquivo temporário de forma compatível com Windows e Linux."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -76,20 +76,21 @@ def gerar_relatorio_pdf(resultados, fig):
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Etapa: {resultados['etapa']}", ln=True, align="C")
     pdf.ln(10)
-
     for chave, valor in resultados['metricas'].items():
         pdf.cell(80, 10, str(chave), border=1)
         pdf.cell(0, 10, str(valor), border=1, ln=True)
     pdf.ln(10)
-    
-    # SALVANDO IMAGEM EM ARQUIVO TEMPORÁRIO PARA CONTORNAR O BUG DA FPDF
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".png") as tmpfile:
-        # Salva a figura no arquivo temporário
-        fig.savefig(tmpfile.name, format="png", dpi=150)
-        # Adiciona a imagem ao PDF usando o NOME do arquivo
-        pdf.image(tmpfile.name, x=10, y=None, w=190)
 
-    # Retorna o PDF em formato de bytes, pronto para download
+    # CORREÇÃO PARA COMPATIBILIDADE COM WINDOWS:
+    # Passamos o objeto 'tmpfile' diretamente, em vez de 'tmpfile.name'
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".png") as tmpfile:
+        # 1. Salva a figura passando o objeto de arquivo
+        fig.savefig(tmpfile, format="png", dpi=150)
+        
+        # 2. Adiciona a imagem ao PDF passando o mesmo objeto de arquivo
+        #    O 'type' é necessário aqui para o fpdf não se confundir.
+        pdf.image(tmpfile, type='PNG', x=10, y=None, w=190)
+
     return bytes(pdf.output())
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
