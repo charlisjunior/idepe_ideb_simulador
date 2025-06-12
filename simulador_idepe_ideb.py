@@ -81,7 +81,7 @@ def gerar_relatorio_pdf(resultados, fig):
     with io.BytesIO() as image_buffer:
         fig.savefig(image_buffer, format="png", dpi=150)
         image_buffer.seek(0)
-        pdf.image(image_buffer, x=10, y=None, w=190)
+        pdf.image(image_buffer, x=10, y=None, w=190, type='PNG')
     return bytes(pdf.output())
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
