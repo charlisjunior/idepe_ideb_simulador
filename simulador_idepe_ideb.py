@@ -1,5 +1,5 @@
 # ==============================================================================
-#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL, COMPLETA E CORRIGIDA (12/06/2025)
+#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL COM BIBLIOTECA CORRIGIDA (fpdf2)
 # ==============================================================================
 
 # --- 0. IMPORTAÇÕES NECESSÁRIAS ---
@@ -7,9 +7,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import io
-from fpdf import FPDF
-import tempfile
-import os
+from fpdf import FPDF # O nome do import não muda
 
 # --- 1. CONFIGURAÇÃO CENTRALIZADA ---
 ETAPAS_CONFIG = {
@@ -30,11 +28,7 @@ ETAPAS_CONFIG = {
 # --- 2. FUNÇÕES DE LÓGICA E UTILIDADES ---
 
 def limpar_campos():
-    """Callback para o botão 'Limpar'. Deleta chaves do session_state."""
-    keys_to_delete = [k for k in st.session_state.keys()]
-    for key in keys_to_delete:
-        del st.session_state[key]
-
+    st.session_state.clear()
 
 def calcular_fluxo(aprovacoes):
     aprovacoes_validas = [a for a in aprovacoes if a is not None]
@@ -59,8 +53,7 @@ def criar_grafico_simulacao(data):
     return fig
 
 def gerar_relatorio_pdf(resultados, fig):
-    """Gera o PDF usando um arquivo temporário de forma manual para garantir
-    compatibilidade total entre Windows (local) e Linux (Streamlit Cloud)."""
+    """Gera o PDF usando a abordagem em memória, que funciona com fpdf2."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -73,19 +66,13 @@ def gerar_relatorio_pdf(resultados, fig):
         pdf.cell(0, 10, str(valor), border=1, ln=True)
     pdf.ln(10)
 
-    tmp_file_name = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp_file_name = tmp.name
-        
-        fig.savefig(tmp_file_name, format="png", dpi=150)
-        pdf.image(tmp_file_name, x=10, y=None, w=190)
+    # Abordagem em memória: a mais limpa e eficiente.
+    with io.BytesIO() as image_buffer:
+        fig.savefig(image_buffer, format="png", dpi=150)
+        # Com a biblioteca fpdf2, esta chamada funciona corretamente.
+        pdf.image(image_buffer, w=190)
 
-    finally:
-        if tmp_file_name and os.path.exists(tmp_file_name):
-            os.remove(tmp_file_name)
-    
-    return bytes(pdf.output())
+    return pdf.output()
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
 
@@ -99,13 +86,11 @@ def main():
 
     indicador = st.selectbox("🔍 Qual indicador deseja simular?", ["IDEB", "IDEPE"], key="indicador")
     etapa = st.selectbox("📚 Etapa de Ensino", list(ETAPAS_CONFIG.keys()), key="etapa")
-    
     st.markdown("---")
     
     with st.form(key="simulation_form"):
         st.header("🔢 Entradas de Dados")
         st.subheader("Taxas de Aprovação (%)")
-        
         config = ETAPAS_CONFIG[etapa]
         cols = st.columns(3)
         aprovacoes = []
@@ -143,7 +128,6 @@ def main():
                 "Nota MT Padronizada": f"{nota_mt:.2f}", "Nota SAEPE / SAEB": f"{nota_saepe:.2f}",
                 f"{indicador} Estimado": resultado_formatado
             }
-
             st.markdown("---")
             st.header(f"📈 Resultado do {indicador}")
             for chave, valor in metricas_resultados.items():
@@ -167,6 +151,5 @@ def main():
     st.markdown("---")
     st.markdown("💡 *Este simulador é uma estimativa. Valores reais podem variar.*")
 
-# --- PONTO DE ENTRADA DO SCRIPT ---
 if __name__ == '__main__':
     main()
