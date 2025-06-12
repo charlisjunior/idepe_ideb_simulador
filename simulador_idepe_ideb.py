@@ -67,6 +67,8 @@ def criar_grafico_simulacao(data):
     return fig
 
 def gerar_relatorio_pdf(resultados, fig):
+    """Gera um relatório PDF completo, usando um arquivo temporário para o gráfico
+    para garantir compatibilidade com o ambiente da nuvem."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -74,14 +76,20 @@ def gerar_relatorio_pdf(resultados, fig):
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Etapa: {resultados['etapa']}", ln=True, align="C")
     pdf.ln(10)
+
     for chave, valor in resultados['metricas'].items():
         pdf.cell(80, 10, str(chave), border=1)
         pdf.cell(0, 10, str(valor), border=1, ln=True)
     pdf.ln(10)
-    with io.BytesIO() as image_buffer:
-        fig.savefig(image_buffer, format="png", dpi=150)
-        image_buffer.seek(0)
-        pdf.image(image_buffer, x=10, y=None, w=190, type='PNG')
+    
+    # SALVANDO IMAGEM EM ARQUIVO TEMPORÁRIO PARA CONTORNAR O BUG DA FPDF
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".png") as tmpfile:
+        # Salva a figura no arquivo temporário
+        fig.savefig(tmpfile.name, format="png", dpi=150)
+        # Adiciona a imagem ao PDF usando o NOME do arquivo
+        pdf.image(tmpfile.name, x=10, y=None, w=190)
+
+    # Retorna o PDF em formato de bytes, pronto para download
     return bytes(pdf.output())
 
 # --- 3. FLUXO PRINCIPAL DA APLICAÇÃO (main) ---
