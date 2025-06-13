@@ -27,8 +27,7 @@ ETAPAS_CONFIG = {
 
 # --- 2. FUNÇÕES DE LÓGICA E UTILIDADES ---
 
-def limpar_campos():
-    st.session_state.clear()
+
 
 def calcular_fluxo(aprovacoes):
     aprovacoes_validas = [a for a in aprovacoes if a is not None]
@@ -80,9 +79,6 @@ def main():
     st.title("📊 Simulador do IDEB/IDEPE")
     st.markdown("Selecione a etapa, preencha os campos e clique em 'Calcular'.")
 
-    if st.button("🔄 Limpar todos os campos", on_click=limpar_campos):
-        st.success("Campos reiniciados!")
-        st.rerun()
 
     indicador = st.selectbox("🔍 Qual indicador deseja simular?", ["IDEB", "IDEPE"], key="indicador")
     etapa = st.selectbox("📚 Etapa de Ensino", list(ETAPAS_CONFIG.keys()), key="etapa")
@@ -102,9 +98,8 @@ def main():
         st.subheader("📘 Proficiência")
         col_lp, col_mt = st.columns(2)
         prof_lp_base = col_lp.number_input("Proficiência LP", key="prof_lp", value=None)
-        lp_change = col_lp.number_input("⬆️⬇️ Ajuste LP (+/-)", key="lp_change", step=5, value=0)
         prof_mt_base = col_mt.number_input("Proficiência MT", key="prof_mt", value=None)
-        mt_change = col_mt.number_input("⬆️⬇️ Ajuste MT (+/-)", key="mt_change", step=5, value=0)
+
 
         submitted = st.form_submit_button("Calcular e Simular")
 
@@ -112,8 +107,8 @@ def main():
         if prof_lp_base is None or prof_mt_base is None:
             st.error("Por favor, preencha as proficiências de LP e MT.")
         else:
-            prof_lp = prof_lp_base + lp_change
-            prof_mt = prof_mt_base + mt_change
+            prof_lp = prof_lp_base
+            prof_mt = prof_mt_base
             rendimento = calcular_fluxo(aprovacoes)
             params_lp = config["padronizacao"]["lp"]
             params_mt = config["padronizacao"]["mt"]
