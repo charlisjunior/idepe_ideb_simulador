@@ -1,5 +1,5 @@
 # ==============================================================================
-#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL COM BIBLIOTECA CORRIGIDA (fpdf2)
+#  SIMULADOR IDEB/IDEPE - VERSÃO FINAL
 # ==============================================================================
 
 # --- 0. IMPORTAÇÕES NECESSÁRIAS ---
@@ -7,7 +7,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import io
-from fpdf import FPDF # O nome do import não muda
+from fpdf import FPDF # O PDF2 estava conflitando na geração de imagens na cloud
 
 # --- 1. CONFIGURAÇÃO CENTRALIZADA ---
 ETAPAS_CONFIG = {
@@ -20,7 +20,7 @@ ETAPAS_CONFIG = {
         "padronizacao": {"lp": (100, 300), "mt": (100, 300)}
     },
     "Ensino Médio": {
-        "anos": ["1º Ano EM", "2º Ano EM", "3º Ano EM"],
+        "anos": ["1º Ano EM", "2º Ano EM", "3º Ano EM", "4º Ano EM"],
         "padronizacao": {"lp": (117, 334), "mt": (111, 356)}
     }
 }
@@ -90,9 +90,10 @@ def main():
         config = ETAPAS_CONFIG[etapa]
         cols = st.columns(3)
         aprovacoes = []
+
         for i, ano in enumerate(config["anos"]):
             aprovacoes.append(cols[i % 3].number_input(
-                f"Aprovação {ano}", key=f"ap_{i}", min_value=0.0, max_value=100.0, value=None
+                    f"Aprovação {ano}", key=f"ap_{i}", min_value=0.0, max_value=100.0, value=None
             ))
 
         st.subheader("📘 Proficiência")
@@ -104,7 +105,10 @@ def main():
         submitted = st.form_submit_button("Calcular e Simular")
 
     if submitted:
-        if prof_lp_base is None or prof_mt_base is None:
+        if indicador == "IDEPE" and any((a is not None and (a < 65.0 or a > 100.0)) for a in aprovacoes):
+            st.error("Para o IDEPE, todas as taxas de aprovação devem estar entre 65% e 100%.")
+
+        elif prof_lp_base is None or prof_mt_base is None:
             st.error("Por favor, preencha as proficiências de LP e MT.")
         else:
             prof_lp = prof_lp_base
